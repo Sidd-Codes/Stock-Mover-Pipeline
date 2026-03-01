@@ -1,0 +1,21 @@
+# .gitignore
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfvars
+
+# Lambda build artifacts
+lambda/**/*.zip
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# Node/Next.js
+node_modules/
+.next/
+.env.local
