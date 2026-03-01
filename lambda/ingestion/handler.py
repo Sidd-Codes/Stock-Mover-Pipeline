@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 WATCHLIST = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA"]
 DYNAMODB_TABLE = os.environ["DYNAMODB_TABLE"]
-SECRET_NAME    = os.environ["SECRET_NAME"]
+SECRET_NAME = os.environ["SECRET_NAME"]
 
 
 def get_api_key():
@@ -24,17 +24,17 @@ def fetch_stock_data(ticker, date_str, api_key):
             data = json.loads(response.read().decode())
 
             if data.get("status") != "OK":
-                print(f"[WARN] No data for {ticker} on {date_str}: {data.get('status')}")
+                print(f"warning: No data for {ticker} on {date_str}: {data.get('status')}")
                 return None
 
             return {
                 "ticker": ticker,
-                "open":   data["open"],
-                "close":  data["close"],
+                "open": data["open"],
+                "close": data["close"],
             }
 
     except Exception as e:
-        print(f"[ERROR] Failed to fetch {ticker}: {str(e)}")
+        print(f"error: Failed to fetch {ticker}: {str(e)}")
         return None
 
 
@@ -47,23 +47,23 @@ def save_to_dynamodb(date_str, ticker, percent_change, close_price):
     table    = dynamodb.Table(DYNAMODB_TABLE)
 
     table.put_item(Item={
-        "date":           date_str,
-        "ticker":         ticker,
+        "date": date_str,
+        "ticker": ticker,
         "percent_change": str(round(percent_change, 4)),
-        "close_price":    str(round(close_price, 4)),
-        "is_gain":        percent_change > 0,
+        "close_price": str(round(close_price, 4)),
+        "is_gain": percent_change > 0,
     })
 
-    print(f"[INFO] Saved: {ticker} {percent_change:.2f}% on {date_str}")
+    print(f"Saved: {ticker} {percent_change:.2f}% on {date_str}")
 
 
 def lambda_handler(event, context):
-    print("[INFO] Ingestion Lambda started")
+    print("Ingestion Lambda started")
 
     api_key  = get_api_key()
 
     yesterday = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
-    print(f"[INFO] Fetching data for {yesterday}")
+    print(f"Fetching data for {yesterday}")
 
     results = []
     for ticker in WATCHLIST:
@@ -71,31 +71,31 @@ def lambda_handler(event, context):
         if data:
             pct = calc_percent_change(data["open"], data["close"])
             results.append({
-                "ticker":         ticker,
+                "ticker": ticker,
                 "percent_change": pct,
-                "close_price":    data["close"],
+                "close_price": data["close"],
             })
 
     if not results:
-        print("[WARN] No results returned for any ticker. Possibly a market holiday.")
-        return {"statusCode": 200, "body": "No data available — market may be closed."}
+        print("warning: No results returned for any ticker. Possibly a market holiday.")
+        return {"statusCode": 200, "body": "No data available - market may be closed."}
 
     top_mover = max(results, key=lambda x: abs(x["percent_change"]))
-    print(f"[INFO] Top mover: {top_mover['ticker']} at {top_mover['percent_change']:.2f}%")
+    print(f"Top mover: {top_mover['ticker']} at {top_mover['percent_change']:.2f}%")
 
     save_to_dynamodb(
-        date_str       = yesterday,
-        ticker         = top_mover["ticker"],
+        date_str = yesterday,
+        ticker = top_mover["ticker"],
         percent_change = top_mover["percent_change"],
-        close_price    = top_mover["close_price"],
+        close_price = top_mover["close_price"],
     )
 
     return {
         "statusCode": 200,
         "body": json.dumps({
-            "date":           yesterday,
-            "top_mover":      top_mover["ticker"],
+            "date": yesterday,
+            "top_mover": top_mover["ticker"],
             "percent_change": round(top_mover["percent_change"], 4),
-            "close_price":    top_mover["close_price"],
+            "close_price": top_mover["close_price"],
         })
     }
