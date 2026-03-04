@@ -44,7 +44,7 @@ def calc_percent_change(open_price, close_price):
 
 def save_to_dynamodb(date_str, ticker, percent_change, close_price):
     dynamodb = boto3.resource("dynamodb")
-    table    = dynamodb.Table(DYNAMODB_TABLE)
+    table = dynamodb.Table(DYNAMODB_TABLE)
 
     table.put_item(Item={
         "date": date_str,
@@ -62,7 +62,7 @@ def lambda_handler(event, context):
 
     api_key  = get_api_key()
 
-    yesterday = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+    yesterday = event.get("date") or (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
     print(f"Fetching data for {yesterday}")
 
     results = []

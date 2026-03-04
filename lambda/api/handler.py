@@ -18,7 +18,7 @@ def cors_headers():
 
 def get_last_7_dates():
     dates = []
-    for i in range(1, 8):
+    for i in range(1, 14):
         date = (datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d")
         dates.append(date)
     return dates
