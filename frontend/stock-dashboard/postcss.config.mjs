@@ -1,5 +1,7 @@
-const nextConfig = {
-  output: "export",
+const config = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
 };
-
-export default nextConfig;
+export default config;
