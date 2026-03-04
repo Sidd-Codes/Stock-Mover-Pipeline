@@ -145,16 +145,22 @@ stock-mover-pipeline/
 
 ---
 
-## Design Decisions & Trade-offs
+## Trade-offs
 
-**Two separate Lambda functions** - the ingestion Lambda and API Lambda are intentionally separate to follow the separation of concerns principle where one function owns writing data and the other owns reading it. They can be scaled, updated, and debugged independently.
+**Used two Lambda functions instead of one** - I separated ingestion and retrieval into distinct Lambda functions rather than combining them. This adds a small amount of infrastructure overhead but follows separation of concerns since each function has a single responsibility, can be scaled independently, and is easier to debug in isolation.
 
-**DynamoDB partition key is `date`** - one record per trading day keeps the data model simple. The API Lambda does individual `get_item` lookups by date which are fast and cheap on DynamoDB.
+**DynamoDB over RDS** - A relational database would allow more complex queries but DynamoDB's key-value model feature worked well in this case. I stored one record per trading day and look up by date so no joins were needed. PAY_PER_REQUEST billing also helps to keep it within the free tier.
 
-**PAY_PER_REQUEST billing** - chosen over provisioned capacity because the pipeline writes once per day and reads occasionally.
+**Static export over SSR** - Next.js supports server-side rendering but hosting on S3 requires a fully static export. This means the frontend fetches data client-side on load rather than at build time, causing a brief loading state but it keeps the hosting cost at zero with no server required.
 
-**Secrets Manager over environment variables** - the stock API key is stored in Secrets Manager and fetched at Lambda runtime. This means the key never exists in code, config files, or environment variables.
+**Secrets Manager over environment variables** - storing the API key in Secrets Manager adds a small Lambda cold start overhead (one extra API call per invocation) but eliminates any risk of credentials being exposed in code or config files.
 
-**SQS Dead Letter Queue** - if the ingestion Lambda crashes entirely, the failed event is captured in SQS for inspection and retry rather than disappearing silently.
+## Challenges
 
-**Backfill script** - on first deploy the DynamoDB table is empty. The backfill script seeds the last 7 trading days so the dashboard is populated immediately rather than waiting a week for the cron to accumulate data.
+**Terraform state on first deploy** - managing forward references between resources (Lambda referencing SQS before SQS existed) required understanding how Terraform resolves dependency ordering.
+
+**API rate limiting** - the free tier on Massive API limits requests per minute. The backfill script hit 429 errors initially, which I resolved by adding a delay between requests.
+
+**CORS configuration** - wiring up CORS correctly across API Gateway and the Lambda response headers required handling both the OPTIONS preflight request and the actual GET response headers separately.
+
+**Cold start problem** - initially the DynamoDB table was empty so the dashboard had no data. I solved this by building a backfill script that seeds the last 7 trading days on initial deploy.
