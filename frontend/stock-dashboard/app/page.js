@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 const API_URL = "https://ksik6p1o6k.execute-api.us-east-1.amazonaws.com/prod/movers";
 
 function formatDate(dateStr) {
-  const d = new Date(dateStr);
+  const d = new Date(dateStr + "T00:00:00");
   if (Number.isNaN(d.getTime())) return dateStr;
   return d.toLocaleDateString("en-US", {
     month: "short",
